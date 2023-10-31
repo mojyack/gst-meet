@@ -563,16 +563,16 @@ impl JingleSession {
       .build()?;
     pipeline.add(&nicesink)?;
 
-    let dtls_srtp_connection_id = "gst-meet";
+    let dtls_srtp_connection_id = format!{"gst-meet-{}", random::<i32>()};
 
     let dtlssrtpenc = gstreamer::ElementFactory::make("dtlssrtpenc")
-      .property("connection-id", dtls_srtp_connection_id)
+      .property("connection-id", dtls_srtp_connection_id.clone())
       .property("is-client", true)
       .build()?;
     pipeline.add(&dtlssrtpenc)?;
 
     let dtlssrtpdec = gstreamer::ElementFactory::make("dtlssrtpdec")
-      .property("connection-id", dtls_srtp_connection_id)
+      .property("connection-id", dtls_srtp_connection_id.clone())
       .property(
         "pem",
         format!("{}\n{}", dtls_cert_pem, dtls_private_key_pem),
