@@ -292,6 +292,48 @@ pub unsafe extern "C" fn gstmeet_conference_on_participant(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn gstmeet_conference_on_participant_left(
+  context: *mut Context,
+  conference: *mut JitsiConference,
+  f: unsafe extern "C" fn(
+    *mut JitsiConference,
+    Participant,
+    *mut c_void,
+  ),
+  ctx: *mut c_void,
+) {
+  let ctx = Arc::new(AtomicPtr::new(ctx));
+  (*context).runtime.block_on(
+    (*conference).on_participant_left(move |conference, participant| {
+      let ctx = ctx.clone();
+      Box::pin(async move {
+        let participant = Participant {
+          jid: participant
+            .jid
+            .map(
+              |jid| Ok::<_, anyhow::Error>(CString::new(jid.to_string())?.into_raw() as *const _),
+            )
+            .transpose()?
+            .unwrap_or_else(ptr::null),
+          muc_jid: CString::new(participant.muc_jid.to_string())?.into_raw() as *const _,
+          nick: participant
+            .nick
+            .map(|nick| Ok::<_, anyhow::Error>(CString::new(nick)?.into_raw() as *const _))
+            .transpose()?
+            .unwrap_or_else(ptr::null),
+        };
+        f(
+          Box::into_raw(Box::new(conference)),
+          participant,
+          ctx.load(Ordering::Relaxed),
+        );
+        Ok(())
+      })
+    }),
+  );
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn gstmeet_conference_set_pipeline_state(
   context: *mut Context,
   conference: *mut JitsiConference,
