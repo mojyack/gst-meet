@@ -556,6 +556,9 @@ impl JingleSession {
       .build()?;
     pipeline.add(&nicesrc)?;
 
+    let queue = gstreamer::ElementFactory::make("queue").build()?;
+    pipeline.add(&queue)?;
+
     let nicesink = gstreamer::ElementFactory::make("nicesink")
       .property("stream", ice_stream_id)
       .property("component", ice_component_id)
@@ -1207,7 +1210,8 @@ impl JingleSession {
     nicesrc.link(&dtlssrtpdec)?;
 
     debug!("linking dtlssrtpenc -> ice sink");
-    dtlssrtpenc.link_pads(Some("src"), &nicesink, Some("sink"))?;
+    dtlssrtpenc.link_pads(Some("src"), &queue, Some("sink"))?;
+    queue.link_pads(Some("src"), &nicesink, Some("sink"))?;
 
     let bus = pipeline.bus().context("failed to get pipeline bus")?;
 
